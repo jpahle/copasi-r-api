@@ -61,6 +61,17 @@ ENV R_DEPS_CMD "install.packages(c('remotes', 'testthat', 'sessioninfo', 'vctrs'
 RUN Rscript -e "$R_OPTS $R_DEPS_CMD"
 WORKDIR /work
 
+FROM fedora:34 AS r_fedora_34
+RUN dnf -y update \
+	&& dnf install -y R-core-devel \
+	&& dnf clean all
+# prevent errors when package docs are installed
+RUN Rscript -e 'x <- file.path(R.home("doc"), "html"); if (!file.exists(x)) {dir.create(x, recursive=TRUE); file.copy(system.file("html/R.css", package="stats"), x)}'
+ENV R_OPTS "options(repos = c(CRAN = 'http://cloud.r-project.org/')); options(Ncpus = as.integer(system2('nproc', stdout = TRUE))); options(warn = 2);"
+ENV R_DEPS_CMD "install.packages(c('remotes', 'testthat', 'sessioninfo', 'vctrs', 'purrr', 'stringr', 'readr', 'isnullptr'));"
+RUN Rscript -e "$R_OPTS $R_DEPS_CMD"
+WORKDIR /work
+
 FROM fedora:32 AS r_fedora_32
 RUN dnf -y update \
 	&& dnf install -y R-core-devel \
@@ -120,8 +131,24 @@ RUN curl -L https://cran.r-project.org/src/base-prerelease/R-latest.tar.gz | tar
 RUN ln -s /opt/R/bin/Rscript /opt/R/bin/R /usr/local/bin/
 RUN Rscript -e "$R_OPTS $R_DEPS_CMD"
 
+FROM rbuilder AS r_4_1
+RUN curl -L https://cran.r-project.org/src/base/R-4/R-4.1.0.tar.gz | tar -xz \
+	&& cd R-*/ \
+	&& ./configure \
+		--prefix=/opt/R/ \
+		--enable-R-shlib \
+		--without-recommended-packages --with-x=no --with-aqua=no \
+		--with-tcltk=no --with-ICU=no --disable-java --disable-openmp --disable-nls \
+		--disable-R-profiling --disable-BLAS-shlib --with-libpng=no --with-jpeglib=no --with-libtiff=no \
+	&& make \
+	&& make install \
+	&& cd ../ \
+	&& rm -r R-*/
+RUN ln -s /opt/R/bin/Rscript /opt/R/bin/R /usr/local/bin/
+RUN Rscript -e "$R_OPTS $R_DEPS_CMD"
+
 FROM rbuilder AS r_4_0
-RUN curl -L https://cran.r-project.org/src/base/R-4/R-4.0.0.tar.gz | tar -xz \
+RUN curl -L https://cran.r-project.org/src/base/R-4/R-4.0.5.tar.gz | tar -xz \
 	&& cd R-*/ \
 	&& ./configure \
 		--prefix=/opt/R/ \
