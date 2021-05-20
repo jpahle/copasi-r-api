@@ -29,11 +29,11 @@ ENV UNSTABLE_RSCRIPT=true
 WORKDIR /work
 
 FROM centos:8 AS r_centos_8
-RUN yum install -y epel-release yum-utils \
-	&& yum clean all \
-	&& yum config-manager --set-enabled PowerTools \
-	&& yum install -y R-core-devel \
-	&& yum clean all
+RUN dnf -y update \
+	&& dnf install -y dnf-plugins-core epel-release \
+	&& dnf config-manager --set-enabled powertools \
+	&& dnf install -y R-core-devel \
+	&& dnf clean all
 ENV R_OPTS "options(repos = c(CRAN = 'https://cloud.r-project.org/')); options(Ncpus = as.integer(system2('nproc', stdout = TRUE))); options(warn = 2);"
 ENV R_DEPS_CMD "install.packages(c('remotes', 'testthat', 'sessioninfo', 'vctrs', 'purrr', 'stringr', 'readr', 'isnullptr'));"
 RUN Rscript -e "$R_OPTS $R_DEPS_CMD"
